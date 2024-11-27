@@ -9,10 +9,9 @@ const TelegramBot = require("node-telegram-bot-api");
 const app = express();
 app.use(express.json());
 
-// Session setup
 app.use(
   session({
-    secret: "your-session-secret",
+    secret: "2c1db62ed717af9236f3f72b4d2f6790d0ff501b6f19d70861fa4532c1da8544",
     resave: false,
     saveUninitialized: true,
   })
