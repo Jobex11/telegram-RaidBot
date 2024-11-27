@@ -99,7 +99,7 @@ bot.onText(/\/start/, async (msg) => {
           [
             {
               text: "🔗 Connect X Account",
-              url: `https://your-app-url.com/auth/twitter`,
+              url: `https://raidbot-r6h9.onrender.com/auth/twitter`,
             },
           ],
         ],
