@@ -58,18 +58,21 @@ passport.use(
       callbackURL: CALLBACK_URL, // Redirect URL after successful login
     },
     async (token, tokenSecret, profile, done) => {
-      // Save Twitter profile data in the database
-      const { id, username } = profile;
-      let user = await User.findOne({ twitterUsername: username });
+      try {
+        const { username } = profile;
+        let user = await User.findOne({ twitterUsername: username });
 
-      if (!user) {
-        user = await User.create({
-          telegramId: profile.id,
-          twitterUsername: username,
-        });
+        if (!user) {
+          user = await User.create({
+            telegramId: null, // Will link with Telegram ID later
+            twitterUsername: username,
+          });
+        }
+
+        done(null, user);
+      } catch (err) {
+        done(err, null);
       }
-
-      done(null, user);
     }
   )
 );
@@ -85,18 +88,18 @@ bot.onText(/\/start/, async (msg) => {
   const chatId = msg.chat.id;
   const telegramId = msg.from.id;
 
-  // Check if user exists
   let user = await User.findOne({ telegramId });
+
   if (!user) {
-    // If the user doesn't exist, create one and send the authentication button
+    // If user doesn't exist, create a new record
     user = await User.create({ telegramId });
     const keyboard = {
       reply_markup: {
         inline_keyboard: [
           [
             {
-              text: "Connect X Account",
-              url: `http://localhost:3000/auth/twitter`, // Redirect to Twitter OAuth
+              text: "🔗 Connect X Account",
+              url: `https://your-app-url.com/auth/twitter`,
             },
           ],
         ],
@@ -104,11 +107,40 @@ bot.onText(/\/start/, async (msg) => {
     };
     bot.sendMessage(
       chatId,
-      "Welcome! Please connect your X account by clicking the button below.",
+      "👋 Welcome! Please connect your X (Twitter) account by clicking the button below:",
+      keyboard
+    );
+  } else if (!user.twitterUsername) {
+    // User exists but hasn't connected X account
+    const keyboard = {
+      reply_markup: {
+        inline_keyboard: [
+          [
+            {
+              text: "🔗 Connect X Account",
+              url: `https://your-app-url.com/auth/twitter`,
+            },
+          ],
+        ],
+      },
+    };
+    bot.sendMessage(
+      chatId,
+      "👋 Welcome back! Please connect your X account to proceed:",
       keyboard
     );
   } else {
-    bot.sendMessage(chatId, "Welcome back!");
+    // User is already connected
+    bot.sendMessage(chatId, `🎉 Welcome back, ${user.twitterUsername}!`, {
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: "📊 Leaderboard", callback_data: "leaderboard" }],
+          [{ text: "📜 Activity", callback_data: "activity" }],
+          [{ text: "💰 Wallet", callback_data: "wallet" }],
+          [{ text: "🎁 Claim Reward", callback_data: "claim_reward" }],
+        ],
+      },
+    });
   }
 });
 
@@ -118,13 +150,54 @@ app.get("/auth/twitter", passport.authenticate("twitter"));
 app.get(
   "/auth/twitter/callback",
   passport.authenticate("twitter", { failureRedirect: "/" }),
-  (req, res) => {
-    const user = req.user;
-
-    // Redirect to Telegram bot (or any confirmation page)
-    res.send(`Twitter account connected: ${user.twitterUsername}`);
+  async (req, res) => {
+    try {
+      const user = req.user;
+      if (req.session.telegramId) {
+        // Link Telegram ID with the authenticated Twitter user
+        await User.findByIdAndUpdate(user._id, {
+          telegramId: req.session.telegramId,
+        });
+      }
+      res.send(
+        "🎉 Your X account has been successfully connected! You can now return to the Telegram bot."
+      );
+    } catch (err) {
+      console.error("Error during callback:", err);
+      res.status(500).send("Internal Server Error");
+    }
   }
 );
+
+// Telegram Bot Button Handlers
+bot.on("callback_query", async (query) => {
+  const chatId = query.message.chat.id;
+  const user = await User.findOne({ telegramId: query.from.id });
+
+  if (!user) {
+    bot.sendMessage(chatId, "⚠️ Please start by connecting your X account!");
+    return;
+  }
+
+  switch (query.data) {
+    case "leaderboard":
+      bot.sendMessage(chatId, "📊 Leaderboard feature is under development.");
+      break;
+    case "activity":
+      bot.sendMessage(chatId, "📜 Activity feature is under development.");
+      break;
+    case "wallet":
+      bot.sendMessage(chatId, "💰 Wallet feature is under development.");
+      break;
+    case "claim_reward":
+      user.points += 10; // Example reward
+      await user.save();
+      bot.sendMessage(chatId, "🎁 You claimed your reward! +10 points");
+      break;
+    default:
+      bot.sendMessage(chatId, "❓ Unknown command.");
+  }
+});
 
 // Start the Server
 app.listen(PORT || 3000, () => {
