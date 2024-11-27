@@ -18,11 +18,9 @@ app.use(
   })
 );
 
-// Passport initialization
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Environment Variables
 const {
   PORT,
   MONGO_URI,
@@ -32,16 +30,13 @@ const {
   CALLBACK_URL,
 } = process.env;
 
-// Telegram Bot Initialization
 const bot = new TelegramBot(TELEGRAM_BOT_TOKEN, { polling: true });
 
-// Database Connection
 mongoose
   .connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => console.log("Connected to MongoDB"))
   .catch((err) => console.error("Database connection error:", err));
 
-// User Schema
 const UserSchema = new mongoose.Schema({
   telegramId: String,
   twitterUsername: String,
@@ -49,13 +44,12 @@ const UserSchema = new mongoose.Schema({
 });
 const User = mongoose.model("User", UserSchema);
 
-// Configure Twitter OAuth
 passport.use(
   new TwitterStrategy(
     {
       consumerKey: TWITTER_API_KEY,
       consumerSecret: TWITTER_API_SECRET,
-      callbackURL: CALLBACK_URL, // Redirect URL after successful login
+      callbackURL: CALLBACK_URL,
     },
     async (token, tokenSecret, profile, done) => {
       try {
@@ -64,7 +58,7 @@ passport.use(
 
         if (!user) {
           user = await User.create({
-            telegramId: null, // Will link with Telegram ID later
+            telegramId: null,
             twitterUsername: username,
           });
         }
@@ -83,7 +77,6 @@ passport.deserializeUser(async (id, done) => {
   done(null, user);
 });
 
-// Telegram Bot Commands
 bot.onText(/\/start/, async (msg) => {
   const chatId = msg.chat.id;
   const telegramId = msg.from.id;
@@ -91,7 +84,6 @@ bot.onText(/\/start/, async (msg) => {
   let user = await User.findOne({ telegramId });
 
   if (!user) {
-    // If user doesn't exist, create a new record
     user = await User.create({ telegramId });
     const keyboard = {
       reply_markup: {
@@ -99,7 +91,7 @@ bot.onText(/\/start/, async (msg) => {
           [
             {
               text: "🔗 Connect X Account",
-              url: `https://raidbot-r6h9.onrender.com/auth/twitter`,
+              url: `https://telegram-raidbot.onrender.com/auth/twitter`,
             },
           ],
         ],
@@ -111,14 +103,13 @@ bot.onText(/\/start/, async (msg) => {
       keyboard
     );
   } else if (!user.twitterUsername) {
-    // User exists but hasn't connected X account
     const keyboard = {
       reply_markup: {
         inline_keyboard: [
           [
             {
               text: "🔗 Connect X Account",
-              url: `https://your-app-url.com/auth/twitter`,
+              url: `https://telegram-raidbot.onrender.com/auth/twitter`,
             },
           ],
         ],
@@ -130,7 +121,6 @@ bot.onText(/\/start/, async (msg) => {
       keyboard
     );
   } else {
-    // User is already connected
     bot.sendMessage(chatId, `🎉 Welcome back, ${user.twitterUsername}!`, {
       reply_markup: {
         inline_keyboard: [
@@ -144,7 +134,6 @@ bot.onText(/\/start/, async (msg) => {
   }
 });
 
-// Twitter OAuth Routes
 app.get("/auth/twitter", passport.authenticate("twitter"));
 
 app.get(
@@ -154,7 +143,6 @@ app.get(
     try {
       const user = req.user;
       if (req.session.telegramId) {
-        // Link Telegram ID with the authenticated Twitter user
         await User.findByIdAndUpdate(user._id, {
           telegramId: req.session.telegramId,
         });
@@ -169,7 +157,6 @@ app.get(
   }
 );
 
-// Telegram Bot Button Handlers
 bot.on("callback_query", async (query) => {
   const chatId = query.message.chat.id;
   const user = await User.findOne({ telegramId: query.from.id });
@@ -190,7 +177,7 @@ bot.on("callback_query", async (query) => {
       bot.sendMessage(chatId, "💰 Wallet feature is under development.");
       break;
     case "claim_reward":
-      user.points += 10; // Example reward
+      user.points += 10;
       await user.save();
       bot.sendMessage(chatId, "🎁 You claimed your reward! +10 points");
       break;
@@ -199,7 +186,6 @@ bot.on("callback_query", async (query) => {
   }
 });
 
-// Start the Server
 app.listen(PORT || 3000, () => {
   console.log(`Server running on port ${PORT || 3000}`);
 });
