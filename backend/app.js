@@ -1,25 +1,112 @@
-require("dotenv").config();
+const express = require("express");
+const axios = require("axios");
+const bot = require("./bot"); // Import the Telegram bot
+const mongoose = require("mongoose");
+const dotenv = require("dotenv");
+const cors = require("cors");
+const app = express();
+
+dotenv.config(); // Load environment variables from .env
+
+// MongoDB connection using MONGO_URI
+mongoose
+  .connect(process.env.MONGO_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
+  .then(() => console.log("MongoDB connected"))
+  .catch((err) => console.log("MongoDB connection error: ", err));
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+
+// Mongoose model for saving user data
+const User = require("./models/User");
+
+// Twitter OAuth route
+app.get("/auth/twitter", (req, res) => {
+  const clientId = process.env.TWITTER_CLIENT_ID;
+  const redirectUri = "https://telegramxraid.vercel.app/";
+
+  const twitterAuthUrl = `https://twitter.com/i/oauth2/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(
+    redirectUri
+  )}&scope=tweet.read%20users.read&state=state&code_challenge=challenge&code_challenge_method=plain`;
+  res.redirect(twitterAuthUrl);
+});
+
+// OAuth Callback route to handle the response and save to MongoDB
+app.get("/auth/callback", async (req, res) => {
+  const { code, telegramUsername } = req.query; // Telegram username passed in query
+  try {
+    // Exchange OAuth code for access token
+    const response = await axios.post(
+      "https://api.twitter.com/2/oauth2/token",
+      new URLSearchParams({
+        code,
+        grant_type: "authorization_code",
+        client_id: process.env.TWITTER_CLIENT_ID,
+        client_secret: process.env.TWITTER_CLIENT_SECRET,
+        redirect_uri: "https://telegramxraid.vercel.app/",
+      }),
+      {
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      }
+    );
+
+    const { access_token } = response.data;
+
+    // Get Twitter user details
+    const userResponse = await axios.get("https://api.twitter.com/2/users/me", {
+      headers: { Authorization: `Bearer ${access_token}` },
+    });
+
+    const twitterUsername = userResponse.data.data.username;
+
+    // Save Telegram username and Twitter username to MongoDB
+    const newUser = new User({
+      telegramUsername,
+      twitterUsername,
+      accessToken: access_token,
+    });
+    await newUser.save();
+
+    // Redirect the user back to frontend with token
+    res.redirect(`https://telegramxraid.vercel.app/?token=${access_token}`);
+  } catch (error) {
+    console.error("OAuth callback error:", error);
+    res.status(500).send("Authentication failed");
+  }
+});
+
+// Start the backend server
+app.listen(4000, () => {
+  console.log("Server running on http://localhost:4000");
+});
+
+/*
+ require("dotenv").config();
 const express = require("express");
 const axios = require("axios");
 const cors = require("cors");
 const bodyParser = require("body-parser");
-const app = express();
+
+const bot = require("./bot"); 
+const app = express(); 
 app.use(cors());
 app.use(bodyParser.json());
 
 const CLIENT_ID = process.env.TWITTER_API_TOKEN;
 const CLIENT_SECRET = process.env.TWITTER_API_SECRET;
-const CALLBACK_URL = "http://localhost:3000/auth/callback"; // Frontend URL
+const CALLBACK_URL = "https://telegramxraid.vercel.app//auth/callback"; 
 
-// Get Twitter OAuth 2.0 token
 app.get("/auth/twitter", async (req, res) => {
-  const state = "some_random_state"; // Prevent CSRF
+  const state = "some_random_state"; 
   const twitterAuthUrl = `https://twitter.com/i/oauth2/authorize?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${CALLBACK_URL}&scope=tweet.read%20users.read&state=${state}&code_challenge=challenge&code_challenge_method=plain`;
 
   res.redirect(twitterAuthUrl);
 });
 
-// Exchange the authorization code for an access token
 app.get("/auth/callback", async (req, res) => {
   const { code } = req.query;
 
@@ -47,3 +134,5 @@ app.get("/auth/callback", async (req, res) => {
   }
 });
 app.listen(4000, () => console.log("Server running on port 4000"));
+ 
+*/

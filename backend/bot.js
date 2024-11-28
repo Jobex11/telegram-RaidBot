@@ -1,7 +1,18 @@
 const TelegramBot = require("node-telegram-bot-api");
+const mongoose = require("mongoose");
 require("dotenv").config();
 
 const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { polling: true });
+// MongoDB connection using MONGO_URI
+mongoose
+  .connect(process.env.MONGO_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
+  .then(() => console.log("MongoDB connected"))
+  .catch((err) => console.log("MongoDB connection error: ", err));
+
+const User = require("./models/User");
 
 const AUTH_URL = `${process.env.PORT}/auth/twitter`;
 
@@ -25,13 +36,31 @@ bot.onText(/\/login/, (msg) => {
       reply_markup: {
         inline_keyboard: [
           [
-            { text: "🔗 Connect X Account", callback_data: "connect_x" },
+            {
+              text: "🔗 Connect X Account",
+              url: "https://telegramxraid.vercel.app/",
+            },
             { text: "➡️ Main Page", callback_data: "proceed_main" },
           ],
         ],
       },
     }
   );
+});
+
+// Check if user is connected to Twitter and send a message
+async function checkUserConnection(telegramUsername) {
+  const user = await User.findOne({ telegramUsername });
+  if (user) {
+    return `Successfully connected to Twitter! Username: ${user.twitterUsername}`;
+  }
+  return "Not connected to Twitter yet.";
+}
+
+bot.onText(/\/status/, async (msg) => {
+  const telegramUsername = msg.from.username;
+  const statusMessage = await checkUserConnection(telegramUsername);
+  bot.sendMessage(msg.chat.id, statusMessage);
 });
 
 // Handle Callback Queries
