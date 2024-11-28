@@ -1,3 +1,80 @@
+/*
+const express = require("express");
+const passport = require("passport");
+const TwitterStrategy = require("passport-twitter").Strategy;
+const session = require("express-session");
+require("dotenv").config();
+
+const app = express();
+
+app.use(
+  session({
+    secret: "your-session-secret",
+    resave: false,
+    saveUninitialized: true,
+  })
+);
+
+app.use(passport.initialize());
+app.use(passport.session());
+
+passport.use(
+  new TwitterStrategy(
+    {
+      consumerKey: process.env.TWITTER_API_KEY,
+      consumerSecret: process.env.TWITTER_API_SECRET,
+      callbackURL: process.env.TWITTER_CALLBACK_URL,
+    },
+    function (token, tokenSecret, profile, done) {
+      return done(null, profile);
+    }
+  )
+);
+
+passport.serializeUser(function (user, done) {
+  done(null, user);
+});
+
+passport.deserializeUser(function (user, done) {
+  done(null, user);
+});
+
+app.get("/auth/twitter", passport.authenticate("twitter"));
+
+app.get(
+  "/auth/twitter/callback",
+  passport.authenticate("twitter", { failureRedirect: "/" }),
+  (req, res) => {
+    res.redirect("/");
+  }
+);
+
+app.get("/", (req, res) => {
+  if (req.isAuthenticated()) {
+    res.send(`
+      <h1>Welcome, ${req.user.displayName}</h1>
+      <img src="${req.user.photos[0].value}" alt="Profile Image">
+      <p><a href='/logout'>Logout</a></p>
+    `);
+  } else {
+    res.send(`
+      <h1>Home Page</h1>
+      <p><a href='/auth/twitter'>Login with Twitter</a></p>
+    `);
+  }
+});
+
+app.get("/logout", (req, res) => {
+  req.logout((err) => {
+    res.redirect("/");
+  });
+});
+
+app.listen(3000, () => {
+  console.log("Server running on http://localhost:3000");
+});
+*/
+
 require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");

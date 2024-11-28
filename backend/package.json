@@ -24,6 +24,7 @@
     "passport": "^0.7.0",
     "passport-local": "^1.0.0",
     "passport-twitter": "^1.0.4",
+    "telegraf": "^4.16.3",
     "twit": "^2.2.11",
     "web3": "^4.15.0"
   }
