@@ -26,7 +26,7 @@ const User = require("./models/User");
 
 // Twitter OAuth route
 app.get("/auth/twitter", (req, res) => {
-  const clientId = process.env.TWITTER_CLIENT_ID;
+  const clientId = process.env.TWITTER_API_KEY;
   const redirectUri = "https://telegramxraid.vercel.app/";
 
   const twitterAuthUrl = `https://twitter.com/i/oauth2/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(
@@ -45,8 +45,8 @@ app.get("/auth/callback", async (req, res) => {
       new URLSearchParams({
         code,
         grant_type: "authorization_code",
-        client_id: process.env.TWITTER_CLIENT_ID,
-        client_secret: process.env.TWITTER_CLIENT_SECRET,
+        client_id: process.env.TWITTER_API_KEY,
+        client_secret: process.env.TWITTER_API_SECRET,
         redirect_uri: "https://telegramxraid.vercel.app/",
       }),
       {
