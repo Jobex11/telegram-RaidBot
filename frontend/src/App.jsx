@@ -6,7 +6,7 @@ const App = () => {
   const [loading, setLoading] = useState(true);
 
   const handleLogin = () => {
-    window.location.href = "http://localhost:4000/auth/twitter"; // Backend OAuth URL
+    window.location.href = "https://server-q6e8.onrender.com/auth/twitter"; // Backend OAuth URL
   };
 
   const fetchUserData = async (token) => {
